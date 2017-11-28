@@ -6,6 +6,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using Aqovia.PactProducerVerifier.Api;
+using Microsoft.AspNetCore.Builder;
 using NUnit.Framework;
 using uhttpsharp;
 using uhttpsharp.Handlers;
@@ -29,10 +30,11 @@ namespace Aqovia.PactProducerVerifier.Sample
                 TeamCityProjectName = "PactProducerSampleTests",
                 PactBrokerUri = "http://localhost:13800",
                 AspNetCoreStartup = typeof(Startup),
-                StartupAssemblyLocation = Path.Combine(TestContext.CurrentContext.TestDirectory, "..\\..\\..\\..\\Aqovia.PactProducerVerifier.Api")
+                StartupAssemblyLocation = Path.Combine(TestContext.CurrentContext.TestDirectory, "..\\..\\..\\..\\..\\Aqovia.PactProducerVerifier.Api")
             };
             _pactProducerTests = new PactProducerTests(configuration, output.WriteLine, ThisAssembly.Git.Branch, builder =>
             {
+                builder.UseMiddleware(typeof(TestStateProvider));
 
             }, TeamCityMaxBranchLength);
         }
