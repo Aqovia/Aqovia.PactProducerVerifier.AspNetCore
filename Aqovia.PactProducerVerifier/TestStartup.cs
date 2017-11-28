@@ -13,13 +13,13 @@ namespace Aqovia.PactProducerVerifier
         private readonly Action<IApplicationBuilder> _onWebAppStarting;
         private readonly object _apiStartup;
 
-        public TestStartup(Type starType, Action<IApplicationBuilder> onWebAppStarting = null)
+        public TestStartup(Type starType, string startupAssemblyLocation, Action<IApplicationBuilder> onWebAppStarting = null)
         {
             _starType = starType;
             _onWebAppStarting = onWebAppStarting;
 
             var builder = new ConfigurationBuilder()
-                .SetBasePath(Path.GetDirectoryName(_starType.Assembly.Location))
+                .SetBasePath(startupAssemblyLocation)
                 .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
                 .AddEnvironmentVariables();            
 

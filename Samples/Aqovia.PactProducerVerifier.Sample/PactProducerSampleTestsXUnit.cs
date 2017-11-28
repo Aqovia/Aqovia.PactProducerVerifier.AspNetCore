@@ -1,4 +1,5 @@
-using System;
+﻿using System;
+using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
@@ -11,37 +12,38 @@ using uhttpsharp.Handlers;
 using uhttpsharp.Headers;
 using uhttpsharp.Listeners;
 using uhttpsharp.RequestProviders;
+using Xunit;
+using Xunit.Abstractions;
 
 
 namespace Aqovia.PactProducerVerifier.Sample
 {    
-    [TestFixture]
-    public class PactProducerSampleTests
+    public class PactProducerSampleTestsXUnit
     {
         private readonly PactProducerTests _pactProducerTests;
         private const int TeamCityMaxBranchLength = 19;
-        public PactProducerSampleTests()
+        public PactProducerSampleTestsXUnit(ITestOutputHelper output)
         {
-            ProducerVerifierConfiguration configuration= new ProducerVerifierConfiguration
+            ProducerVerifierConfiguration configuration = new ProducerVerifierConfiguration
             {
                 TeamCityProjectName = "PactProducerSampleTests",
                 PactBrokerUri = "http://localhost:13800",
-                AspNetCoreStartup = typeof(Startup)
+                AspNetCoreStartup = typeof(Startup),
+                StartupAssemblyLocation = Path.Combine(TestContext.CurrentContext.TestDirectory, "..\\..\\..\\..\\Aqovia.PactProducerVerifier.Api")
             };
-            _pactProducerTests = new PactProducerTests(configuration,  Console.WriteLine, ThisAssembly.Git.Branch, builder =>
+            _pactProducerTests = new PactProducerTests(configuration, output.WriteLine, ThisAssembly.Git.Branch, builder =>
             {
-              
+
             }, TeamCityMaxBranchLength);
         }
 
-        //[Fact]        
-        [Test]
+        [Fact]                
         public async Task EnsureApiHonoursPactWithConsumers()
         {
             using (var httpServer = new HttpServer(new HttpRequestProvider()))
-            {                
+            {
                 httpServer.Use(new TcpListenerAdapter(new TcpListener(IPAddress.Loopback, 13800)));
-                
+
                 httpServer.Use(new InlineHandler(context =>
                 {
                     if (context.Request.Uri.OriginalString == "/pacts/provider/PactProducerSampleTests/latest")
@@ -72,7 +74,7 @@ namespace Aqovia.PactProducerVerifier.Sample
                                 ""headers"": {
                                   ""Content-Type"": ""application/json; charset=utf-8""
                                 },
-                                ""body"":  [""value11"",""value2""]                                
+                                ""body"":  [""value1"",""value2""]                                
                             }
                         }      
                           ],
@@ -89,28 +91,14 @@ namespace Aqovia.PactProducerVerifier.Sample
                     }
                     return Task.CompletedTask;
                 }));
-                                
+
                 httpServer.Start();
-                
-                await _pactProducerTests.EnsureApiHonoursPactWithConsumersAsync();                
+
+                await _pactProducerTests.EnsureApiHonoursPactWithConsumersAsync();
             }
         }
     }
 
-    internal class InlineHandler : IHttpRequestHandler
-    {
-        private readonly Func<IHttpContext, Task> _handler;
-
-        public InlineHandler(Func<IHttpContext,Task> handler)
-        {
-            _handler = handler;
-        }
-
-        public Task Handle(IHttpContext context, Func<Task> next)
-        {
-            return _handler(context);
-        }
-    }
 
 
 }

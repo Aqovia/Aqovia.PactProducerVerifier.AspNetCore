@@ -1,39 +1,43 @@
 using System;
 using System.IO;
 using System.Net;
+using System.Net.Http;
 using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
 using Aqovia.PactProducerVerifier.Api;
-using Microsoft.AspNetCore.Builder;
+using NUnit.Framework;
 using uhttpsharp;
+using uhttpsharp.Handlers;
+using uhttpsharp.Headers;
 using uhttpsharp.Listeners;
 using uhttpsharp.RequestProviders;
 
-namespace Aqovia.PactProducerVerifier.Sample.Test
-{        
-    public class PactProducerSampleTests
+
+namespace Aqovia.PactProducerVerifier.Sample
+{    
+    [TestFixture]
+    public class PactProducerSampleTestsNUnit
     {
         private readonly PactProducerTests _pactProducerTests;
         private const int TeamCityMaxBranchLength = 19;
-        public PactProducerSampleTests()
+        public PactProducerSampleTestsNUnit()
         {
             ProducerVerifierConfiguration configuration= new ProducerVerifierConfiguration
             {
                 TeamCityProjectName = "PactProducerSampleTests",
                 PactBrokerUri = "http://localhost:13800",
                 AspNetCoreStartup = typeof(Startup),
-                StartupAssemblyLocation = Path.Combine(System.Reflection.Assembly.GetExecutingAssembly().Location, "..\\..\\..\\..\\..\\Aqovia.PactProducerVerifier.Api")
-
+                StartupAssemblyLocation = Path.Combine(TestContext.CurrentContext.TestDirectory, "..\\..\\..\\..\\Aqovia.PactProducerVerifier.Api") 
             };
             _pactProducerTests = new PactProducerTests(configuration,  Console.WriteLine, ThisAssembly.Git.Branch, builder =>
             {
-                builder.UseMiddleware(typeof(TestStateProvider));
-
+              
             }, TeamCityMaxBranchLength);
         }
 
         //[Fact]        
-        //[Test]
+        [Test]
         public async Task EnsureApiHonoursPactWithConsumers()
         {
             using (var httpServer = new HttpServer(new HttpRequestProvider()))
@@ -94,21 +98,4 @@ namespace Aqovia.PactProducerVerifier.Sample.Test
             }
         }
     }
-
-    internal class InlineHandler : IHttpRequestHandler
-    {
-        private readonly Func<IHttpContext, Task> _handler;
-
-        public InlineHandler(Func<IHttpContext,Task> handler)
-        {
-            _handler = handler;
-        }
-
-        public Task Handle(IHttpContext context, Func<Task> next)
-        {
-            return _handler(context);
-        }
-    }
-
-
 }

@@ -33,9 +33,7 @@ namespace Aqovia.PactProducerVerifier
         private readonly string _gitBranchName;
         private readonly Action<IApplicationBuilder> _onWebAppStarting;
         private readonly int _maxBranchNameLength;
-
-
-        //Expose httpclient so that tests can supply a mocked version
+        
         public HttpClient CurrentHttpClient;
 
         public PactProducerTests(ProducerVerifierConfiguration configuration, Action<string> output, string gitBranchName, Action<IApplicationBuilder> onWebAppStarting = null, int maxBranchNameLength = int.MaxValue)
@@ -58,10 +56,6 @@ namespace Aqovia.PactProducerVerifier
             
 
             CurrentHttpClient = new HttpClient();
-
-            //var path = AppDomain.CurrentDomain.BaseDirectory;
-            //_startup = Activator.CreateInstance(configuration.AspNetCoreStartup);
-            //_method = configuration.AspNetCoreStartup.GetMethod("Configuration");
         }
 
         public async Task EnsureApiHonoursPactWithConsumersAsync()
@@ -91,26 +85,13 @@ namespace Aqovia.PactProducerVerifier
         private async Task EnsureApiHonoursPactWithConsumersAsync(Uri uri)
         {
 
-            //var builder = new WebHostBuilder()
-            //    .UseKestrel()
-            //    .UseContentRoot(Directory.GetCurrentDirectory())
-            //    .ConfigureAppConfiguration((hostingContext, config) => { /* setup config */  })
-            //    .ConfigureLogging((hostingContext, logging) => { /* setup logging */  })
-            //    .UseIISIntegration()
-            //    .UseDefaultServiceProvider((context, options) => { /* setup the DI container to use */  })
-            //    .ConfigureServices(services =>
-            //    {
-            //        services.AddTransient<IConfigureOptions<KestrelServerOptions>, KestrelServerOptionsSetup>();
-            //    });
-
-            var customStartup = new TestStartup(_configuration.AspNetCoreStartup, _onWebAppStarting);
+            var customStartup = new TestStartup(_configuration.AspNetCoreStartup, _configuration.StartupAssemblyLocation, _onWebAppStarting);
 
             using (var host = WebHost.CreateDefaultBuilder()
                 .ConfigureServices(services =>
                 {
                     services.AddSingleton<IStartup>(customStartup);                    
                 })
-                //.UseStartup(_configuration.AspNetCoreStartup)                
                 .UseUrls(uri.AbsoluteUri)
                 .UseSetting(WebHostDefaults.ApplicationKey, _configuration.AspNetCoreStartup.Assembly.FullName)
                 .Build())
@@ -151,9 +132,7 @@ namespace Aqovia.PactProducerVerifier
                 RequestUri = new Uri($"{_configuration.PactBrokerUri}/pacts/provider/{_configuration.TeamCityProjectName}/latest"),
                 Method = HttpMethod.Get,               
             };
-            //request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue(""));
             
-
             var response = await client.SendAsync(request);
             if (response.StatusCode == HttpStatusCode.OK)
             {

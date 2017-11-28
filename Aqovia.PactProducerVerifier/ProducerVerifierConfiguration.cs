@@ -10,5 +10,6 @@ namespace Aqovia.PactProducerVerifier
         public string PactBrokerPassword { get; set; }
         public string PactBrokerUri { get; set; }
         public Type AspNetCoreStartup { get; set; }
+        public string StartupAssemblyLocation { get; set; }
     }
 }
