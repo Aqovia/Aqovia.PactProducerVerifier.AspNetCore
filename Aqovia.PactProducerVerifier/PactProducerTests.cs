@@ -1,93 +1,73 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Net.Sockets;
 using System.Reflection;
-using Microsoft.Owin.Hosting;
+using System.Text;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
-using Owin;
 using PactNet;
 using PactNet.Infrastructure.Outputters;
-using RestSharp;
-using RestSharp.Authenticators;
 
 namespace Aqovia.PactProducerVerifier
 {
-    public class PactProducerTests
+    public class PactProducerTests : IDisposable
     {
-        private const string MasterBranchName = "master";
-        private const string TeamCityProjectNameAppSettingKey = "TeamCityProjectName";
-        private const string PactBrokerUriAppSettingKey = "PactBrokerUri";
-        private const string BaseServiceUri = "http://localhost";
-
-        private readonly RestClient _pactBrokerRestClient;
-        private readonly object _startup;
-        private readonly MethodInfo _method;
+        private const string MasterBranchName = "master";        
+        private const string BaseServiceUri = "http://localhost";        
+        //private readonly object _startup;
+        //private readonly MethodInfo _method;
         private readonly ActionOutput _output;
+        private readonly ProducerVerifierConfiguration _configuration;
         private readonly string _gitBranchName;
-        private readonly Action<IAppBuilder> _onWebAppStarting;
+        private readonly Action<IApplicationBuilder> _onWebAppStarting;
         private readonly int _maxBranchNameLength;
-        private readonly AppDomainHelper _appDomainHelper;
 
-        private static string ProducerServiceName => ConfigurationManager.AppSettings[TeamCityProjectNameAppSettingKey];
-        private static string ProjectName => ConfigurationManager.AppSettings["WebProjectName"];
-        private static string PactBrokerUsername => ConfigurationManager.AppSettings["PactBrokerUsername"];
-        private static string PactBrokerPassword => ConfigurationManager.AppSettings["PactBrokerPassword"];
-        private static string PactBrokerUri => ConfigurationManager.AppSettings[PactBrokerUriAppSettingKey];
 
-        public PactProducerTests(Action<string> output, string gitBranchName, Action<IAppBuilder> onWebAppStarting = null, int maxBranchNameLength = int.MaxValue)
+        //Expose httpclient so that tests can supply a mocked version
+        public HttpClient CurrentHttpClient;
+
+        public PactProducerTests(ProducerVerifierConfiguration configuration, Action<string> output, string gitBranchName, Action<IApplicationBuilder> onWebAppStarting = null, int maxBranchNameLength = int.MaxValue)
         {
             _output = new ActionOutput(output);
+            _configuration = configuration;
             _gitBranchName = gitBranchName;
             _onWebAppStarting = onWebAppStarting;
             _maxBranchNameLength = maxBranchNameLength;
 
-            if (string.IsNullOrEmpty(ProducerServiceName))
+            if (string.IsNullOrEmpty(configuration.TeamCityProjectName))
             {
-                throw new ArgumentException($"App setting '{TeamCityProjectNameAppSettingKey}' is missing or not set");
+                throw new ArgumentException($"App setting '{nameof(configuration.TeamCityProjectName)}' is missing or not set");
             }
 
-            if (string.IsNullOrEmpty(PactBrokerUri))
+            if (string.IsNullOrEmpty(configuration.PactBrokerUri))
             {
-                throw new ArgumentException($"App setting '{PactBrokerUriAppSettingKey}' is missing or not set");
+                throw new ArgumentException($"App setting '{nameof(configuration.PactBrokerUri)}' is missing or not set");
             }
+            
 
-            _pactBrokerRestClient = SetupRestClient();
-            var path = AppDomain.CurrentDomain.BaseDirectory;
+            CurrentHttpClient = new HttpClient();
 
-            Assembly webAssembly;
-            _appDomainHelper = new AppDomainHelper();
-            try
-            {
-                webAssembly = _appDomainHelper.LoadAssembly(ProjectName != null
-                    ? new FileInfo(Directory.GetFileSystemEntries(path, "*.dll")
-                        .Single(name => name.EndsWith($"{ProjectName}.dll")))
-                    : new FileInfo(Directory.GetFileSystemEntries(path, "*.dll")
-                        .Single(name => name.EndsWith("Web.dll"))));
-            }
-            catch (Exception e)
-            {
-                throw new FileNotFoundException($"Can not found any dll with name equal to '{ProjectName}' or ending with 'Web.dll'", e);
-            }
-
-            Type type;
-            try
-            {
-                type = webAssembly.GetTypes().Single(_ => _.Name == "Startup");
-            }
-            catch (Exception e)
-            {
-                throw new InvalidOperationException("Can not find Owin Startup class", e);
-            }
-
-            _startup = Activator.CreateInstance(type);
-            _method = type.GetMethod("Configuration");
+            //var path = AppDomain.CurrentDomain.BaseDirectory;
+            //_startup = Activator.CreateInstance(configuration.AspNetCoreStartup);
+            //_method = configuration.AspNetCoreStartup.GetMethod("Configuration");
         }
 
-        public void EnsureApiHonoursPactWithConsumers()
+        public async Task EnsureApiHonoursPactWithConsumersAsync()
         {
+            SetupRestClient();
+
             const int maxRetries = 5;
             var random = new Random();
             var uriBuilder = new UriBuilder(BaseServiceUri);
@@ -96,7 +76,7 @@ namespace Aqovia.PactProducerVerifier
                 try
                 {
                     uriBuilder.Port = random.Next(10000, 20000);
-                    EnsureApiHonoursPactWithConsumers(uriBuilder.Uri);
+                    await EnsureApiHonoursPactWithConsumersAsync(uriBuilder.Uri);
                     break;
                 }
                 catch (HttpListenerException ex)
@@ -105,67 +85,90 @@ namespace Aqovia.PactProducerVerifier
                     if(i < maxRetries)
                         _output.WriteLine("will retry ...");
                 }
-            }
-            //unload the newly created child appdomain
-            _appDomainHelper.Dispose();
+            }                        
         }
 
-        private void EnsureApiHonoursPactWithConsumers(Uri uri)
+        private async Task EnsureApiHonoursPactWithConsumersAsync(Uri uri)
         {
-            using (WebApp.Start(uri.AbsoluteUri, builder =>
-            {
-                _onWebAppStarting?.Invoke(builder);
 
-                _method.Invoke(_startup, new List<object> { builder }.ToArray());
-            }))
+            //var builder = new WebHostBuilder()
+            //    .UseKestrel()
+            //    .UseContentRoot(Directory.GetCurrentDirectory())
+            //    .ConfigureAppConfiguration((hostingContext, config) => { /* setup config */  })
+            //    .ConfigureLogging((hostingContext, logging) => { /* setup logging */  })
+            //    .UseIISIntegration()
+            //    .UseDefaultServiceProvider((context, options) => { /* setup the DI container to use */  })
+            //    .ConfigureServices(services =>
+            //    {
+            //        services.AddTransient<IConfigureOptions<KestrelServerOptions>, KestrelServerOptionsSetup>();
+            //    });
+
+            var customStartup = new TestStartup(_configuration.AspNetCoreStartup, _onWebAppStarting);
+
+            using (var host = WebHost.CreateDefaultBuilder()
+                .ConfigureServices(services =>
+                {
+                    services.AddSingleton<IStartup>(customStartup);                    
+                })
+                //.UseStartup(_configuration.AspNetCoreStartup)                
+                .UseUrls(uri.AbsoluteUri)
+                .UseSetting(WebHostDefaults.ApplicationKey, _configuration.AspNetCoreStartup.Assembly.FullName)
+                .Build())
             {
-                var consumers = GetConsumers(_pactBrokerRestClient);
+                
+                await host.StartAsync();
+
+                var consumers = await GetConsumersAsync(CurrentHttpClient);
                 var currentBranchName = GetCurrentBranchName();
                 foreach (var consumer in consumers)
                 {
                     var pactUrl = GetPactUrl(consumer, currentBranchName);
-                    var pact = _pactBrokerRestClient.Execute(new RestRequest(pactUrl));
+                    var pact = await CurrentHttpClient.GetAsync(pactUrl);
                     if (pact.StatusCode != HttpStatusCode.OK)
                     {
                         _output.WriteLine($"Pact does not exist for branch: {currentBranchName}, using {MasterBranchName} instead");
                         pactUrl = GetPactUrl(consumer, MasterBranchName);
-                        pact = _pactBrokerRestClient.Execute(new RestRequest(pactUrl));
+                        pact = await CurrentHttpClient.GetAsync(pactUrl);
                         if (pact.StatusCode != HttpStatusCode.OK)
                             continue;
                     }
-                    VerifyPactWithConsumer(consumer, pactUrl, uri.AbsoluteUri);
+                    VerifyPactWithConsumer(consumer, pactUrl, uri);
                 }
+                await host.StopAsync();
             }
         }
 
-        private static string GetPactUrl(JToken consumer, string branchName)
+        private string GetPactUrl(JToken consumer, string branchName)
         {
-            return $"pacts/provider/{ProducerServiceName}/consumer/{consumer}/latest/{branchName}";
+            return $"pacts/provider/{_configuration.TeamCityProjectName}/consumer/{consumer}/latest/{branchName}";
         }
 
-        private static IEnumerable<JToken> GetConsumers(IRestClient client)
-        {
+        private async Task<IEnumerable<JToken>> GetConsumersAsync(HttpClient client)
+        {            
             IEnumerable<JToken> consumers = new List<JToken>();
-            var restRequest = new RestRequest($"pacts/provider/{ProducerServiceName}/latest");
-            restRequest.AddHeader("Accept", "");
-            var response = client.Execute(restRequest);
+            var request = new HttpRequestMessage()
+            {
+                RequestUri = new Uri($"{_configuration.PactBrokerUri}/pacts/provider/{_configuration.TeamCityProjectName}/latest"),
+                Method = HttpMethod.Get,               
+            };
+            //request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue(""));
+            
+
+            var response = await client.SendAsync(request);
             if (response.StatusCode == HttpStatusCode.OK)
             {
-                dynamic json = JObject.Parse(client.Execute(restRequest).Content);
-                var latestPacts = (JArray)json._links.pacts;
+                JObject json = JObject.Parse(await response.Content.ReadAsStringAsync());
+                var latestPacts = (JArray)json["_links"]["pacts"];
                 consumers = latestPacts.Select(s => s.SelectToken("name"));
             }
             return consumers;
         }
 
-        private static RestClient SetupRestClient()
+        private void SetupRestClient()
         {
-            var client = new RestClient
-            {
-                Authenticator = new HttpBasicAuthenticator(PactBrokerUsername, PactBrokerPassword),
-                BaseUrl = new Uri(PactBrokerUri),
-            };
-            return client;
+            CurrentHttpClient.BaseAddress = new Uri(_configuration.PactBrokerUri);            
+            var byteArray = Encoding.ASCII.GetBytes($"{_configuration.PactBrokerUsername}:{_configuration.PactBrokerPassword}");
+            CurrentHttpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(byteArray));            
         }
         private string GetCurrentBranchName()
         {
@@ -187,7 +190,7 @@ namespace Aqovia.PactProducerVerifier
             return branchName;
         }
 
-        private void VerifyPactWithConsumer(JToken consumer, string pactUrl, string serviceUri)
+        private void VerifyPactWithConsumer(JToken consumer, string pactUrl, Uri serviceUri)
         {
             //we need to instantiate one pact verifier for each consumer
 
@@ -200,16 +203,17 @@ namespace Aqovia.PactProducerVerifier
             };
 
             PactUriOptions pactUriOptions = null;
-            if (!string.IsNullOrEmpty(PactBrokerUsername))
-                pactUriOptions = new PactUriOptions(PactBrokerUsername, PactBrokerPassword);
+            if (!string.IsNullOrEmpty(_configuration.PactBrokerUsername))
+                pactUriOptions = new PactUriOptions(_configuration.PactBrokerUsername, _configuration.PactBrokerPassword);
 
-            var pactUri = new Uri(new Uri(PactBrokerUri), pactUrl);
+            var pactUri = new Uri(new Uri(_configuration.PactBrokerUri), pactUrl);
             var pactVerifier = new PactVerifier(config);
 
             pactVerifier
-                .ProviderState($"{serviceUri}/provider-states")
-                .ServiceProvider(ProducerServiceName, serviceUri)
+                .ProviderState(new Uri(serviceUri, "/provider-states").AbsoluteUri)
+                .ServiceProvider(_configuration.TeamCityProjectName, serviceUri.AbsoluteUri)
                 .HonoursPactWith(consumer.ToString())
+                
                 .PactUri(pactUri.AbsoluteUri, pactUriOptions)
                 .Verify();
         }
@@ -226,6 +230,11 @@ namespace Aqovia.PactProducerVerifier
             {
                 _output.Invoke(line);
             }
+        }
+
+        public void Dispose()
+        {
+            CurrentHttpClient?.Dispose();
         }
     }
 

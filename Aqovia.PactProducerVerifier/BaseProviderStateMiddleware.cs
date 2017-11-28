@@ -5,31 +5,29 @@ using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
-using Microsoft.Owin;
+using Microsoft.AspNetCore.Http;
 using Newtonsoft.Json;
 
 namespace Aqovia.PactProducerVerifier
 {
     public abstract class BaseProviderStateMiddleware
     {
-        private readonly Func<IDictionary<string, object>, Task> _mNext;
-        protected abstract IDictionary<string, Action> ProviderStates { get; }
-
-        protected BaseProviderStateMiddleware(Func<IDictionary<string, object>, Task> next)
+        private readonly RequestDelegate _next;
+        
+        protected BaseProviderStateMiddleware(RequestDelegate next)
         {
-            _mNext = next;
+            _next = next;
         }
 
-        public async Task Invoke(IDictionary<string, object> environment)
-        {
-            IOwinContext context = new OwinContext(environment);
+        protected abstract IDictionary<string, Action> ProviderStates { get; }
 
+        public Task Invoke(HttpContext context)
+        {
             if (context.Request.Path.Value == "/provider-states")
             {
                 context.Response.StatusCode = (int)HttpStatusCode.OK;
 
-                if (context.Request.Method == HttpMethod.Post.ToString() &&
-                    context.Request.Body != null)
+                if (context.Request.Method == HttpMethod.Post.ToString() && context.Request.Body != null)
                 {
                     string jsonRequestBody;
                     using (var reader = new StreamReader(context.Request.Body, Encoding.UTF8))
@@ -45,14 +43,14 @@ namespace Aqovia.PactProducerVerifier
                         ProviderStates[providerState.State].Invoke();
                     }
 
-                    await context.Response.WriteAsync(string.Empty);
+                    context.Response.WriteAsync(string.Empty);
+                    return Task.CompletedTask;
                 }
             }
-            else
-            {
-                await _mNext.Invoke(environment);
-            }
+
+            return this._next(context);
         }
+   
     }
 
     public class ProviderState
