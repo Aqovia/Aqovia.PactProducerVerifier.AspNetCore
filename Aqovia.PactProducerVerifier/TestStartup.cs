@@ -1,11 +1,10 @@
 ﻿using System;
-using System.IO;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Aqovia.PactProducerVerifier
+namespace Aqovia.PactProducerVerifier.AspNetCore
 {
     public class TestStartup : IStartup
     {
@@ -22,7 +21,6 @@ namespace Aqovia.PactProducerVerifier
                 .SetBasePath(startupAssemblyLocation)
                 .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
                 .AddEnvironmentVariables();            
-
             
             _apiStartup = Activator.CreateInstance(starType, builder.Build());
         }

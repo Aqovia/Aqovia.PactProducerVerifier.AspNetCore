@@ -1,33 +1,25 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Net.Sockets;
-using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Server.Kestrel.Core;
-using Microsoft.AspNetCore.Server.Kestrel.Core.Internal;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
 using PactNet;
 using PactNet.Infrastructure.Outputters;
 
-namespace Aqovia.PactProducerVerifier
+namespace Aqovia.PactProducerVerifier.AspNetCore
 {
     public class PactProducerTests : IDisposable
     {
         private const string MasterBranchName = "master";        
-        private const string BaseServiceUri = "http://localhost";        
-        //private readonly object _startup;
-        //private readonly MethodInfo _method;
+        private const string BaseServiceUri = "http://localhost";                
         private readonly ActionOutput _output;
         private readonly ProducerVerifierConfiguration _configuration;
         private readonly string _gitBranchName;

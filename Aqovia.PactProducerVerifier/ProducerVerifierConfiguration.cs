@@ -1,11 +1,10 @@
 ﻿using System;
 
-namespace Aqovia.PactProducerVerifier
+namespace Aqovia.PactProducerVerifier.AspNetCore
 {
     public class ProducerVerifierConfiguration
     {
-        public string TeamCityProjectName { get; set; }
-        public string WebProjectName { get; set; }
+        public string TeamCityProjectName { get; set; }        
         public string PactBrokerUsername { get; set; }
         public string PactBrokerPassword { get; set; }
         public string PactBrokerUri { get; set; }

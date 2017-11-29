@@ -1,55 +1,33 @@
-using System;
-using System.IO;
+﻿using System;
 using System.Net;
-using System.Net.Http;
 using System.Net.Sockets;
-using System.Threading;
 using System.Threading.Tasks;
-using Aqovia.PactProducerVerifier.Api;
-using Microsoft.AspNetCore.Builder;
-using NUnit.Framework;
 using uhttpsharp;
-using uhttpsharp.Handlers;
-using uhttpsharp.Headers;
 using uhttpsharp.Listeners;
 using uhttpsharp.RequestProviders;
 
-
-namespace Aqovia.PactProducerVerifier.Sample
-{    
-    [TestFixture]
-    public class PactProducerSampleTestsNUnit
+namespace Aqovia.PactProducerVerifier.Sample.Test
+{
+    internal class TestPactBrokerServer : IDisposable
     {
-        private readonly PactProducerTests _pactProducerTests;
-        private const int TeamCityMaxBranchLength = 19;
-        public PactProducerSampleTestsNUnit()
+        private readonly int _port;
+        private HttpServer _httpServer;
+
+        public TestPactBrokerServer(int port)
         {
-            ProducerVerifierConfiguration configuration= new ProducerVerifierConfiguration
-            {
-                TeamCityProjectName = "PactProducerSampleTests",
-                PactBrokerUri = "http://localhost:13800",
-                AspNetCoreStartup = typeof(Startup),
-                StartupAssemblyLocation = Path.Combine(TestContext.CurrentContext.TestDirectory, "..\\..\\..\\..\\..\\Aqovia.PactProducerVerifier.Api") 
-            };
-            _pactProducerTests = new PactProducerTests(configuration,  Console.WriteLine, ThisAssembly.Git.Branch, builder =>
-            {
-                builder.UseMiddleware(typeof(TestStateProvider));
-            }, TeamCityMaxBranchLength);
+            _port = port;
         }
 
-        //[Fact]        
-        [Test]
-        public async Task EnsureApiHonoursPactWithConsumers()
+        public void Start()
         {
-            using (var httpServer = new HttpServer(new HttpRequestProvider()))
-            {                
-                httpServer.Use(new TcpListenerAdapter(new TcpListener(IPAddress.Loopback, 13800)));
-                
-                httpServer.Use(new InlineHandler(context =>
+            _httpServer = new HttpServer(new HttpRequestProvider());
+            _httpServer.Use(new TcpListenerAdapter(new TcpListener(IPAddress.Loopback, _port)));
+
+            _httpServer.Use(new InlineHandler(context =>
                 {
                     if (context.Request.Uri.OriginalString == "/pacts/provider/PactProducerSampleTests/latest")
                     {
-                        context.Response = new HttpResponse(HttpResponseCode.Ok, @"{'_links':{'pacts':[{'href':'http://localhost:13800/pacts/provider/PactProducerSampleTests/consumer/testPact/latest/OwinToAspNetCore','name':'testPact'}]}}", false);
+                        context.Response = new HttpResponse(HttpResponseCode.Ok, @"{'_links':{'pacts':[{'href':'http://localhost:" + _port + @"/pacts/provider/PactProducerSampleTests/consumer/testPact/latest/OwinToAspNetCore','name':'testPact'}]}}", false);
                     }
                     else if (context.Request.Uri.OriginalString == "/pacts/provider/PactProducerSampleTests/consumer/testPact/latest/OwinToAspNetCore")
                     {
@@ -92,11 +70,13 @@ namespace Aqovia.PactProducerVerifier.Sample
                     }
                     return Task.CompletedTask;
                 }));
-                                
-                httpServer.Start();
-                
-                await _pactProducerTests.EnsureApiHonoursPactWithConsumersAsync();                
-            }
+
+            _httpServer.Start();                            
+        }
+
+        public void Dispose()
+        {
+            _httpServer?.Dispose();
         }
     }
 }

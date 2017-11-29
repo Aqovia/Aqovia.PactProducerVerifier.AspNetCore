@@ -2,7 +2,8 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net47</TargetFramework>
+    <TargetFramework>net462</TargetFramework>
+    <RuntimeIdentifier>win7-x86</RuntimeIdentifier>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -12,10 +13,13 @@
   <ItemGroup>
     <PackageReference Include="GitInfo" Version="2.0.6" />
     <PackageReference Include="uHttpSharp" Version="0.1.6.22" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.3.0" />
+    <PackageReference Include="xunit" Version="2.2.0" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.2.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Aqovia.PactProducerVerifier\Aqovia.PactProducerVerifier.csproj" />
+    <ProjectReference Include="..\..\Aqovia.PactProducerVerifier\Aqovia.PactProducerVerifier.AspNetCore.csproj" />
     <ProjectReference Include="..\Aqovia.PactProducerVerifier.Api\Aqovia.PactProducerVerifier.Api.csproj" />
   </ItemGroup>
 

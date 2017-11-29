@@ -9,8 +9,8 @@ namespace Aqovia.PactProducerVerifier.Sample.Test
         {
             var test = new PactProducerSampleTests();
             var task = test.EnsureApiHonoursPactWithConsumers();
-           
             task.Wait();
+            Console.ReadLine();
         }
     }
 }
