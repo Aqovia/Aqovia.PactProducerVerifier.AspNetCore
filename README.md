@@ -4,8 +4,8 @@ A utility for verifying producer code against all consumers on the Pact Broker.
 It calls the pact broker and retrieves all pacts where it is a producer (using TeamCityProjectName config setting)
 and allows for branching using either the passed in Git Branch Name or the teamcity environment variable "ComponentBranch"
 
-[![Build status](https://ci.appveyor.com/api/projects/status/jltbacetwhyu9t2x/branch/master?svg=true)](https://ci.appveyor.com/project/aqovia/aqovia-pactproducerverifier/branch/master)
-[![NuGet Badge](https://buildstats.info/nuget/aqovia.pactproducerverifier)](https://www.nuget.org/packages/aqovia.pactproducerverifier)/)
+[![Build status](https://ci.appveyor.com/api/projects/status/jltbacetwhyu9t2x/branch/master?svg=true)](https://ci.appveyor.com/project/aqovia/aqovia-pactproducerverifier-aspnetcore/branch/master)
+[![NuGet Badge](https://buildstats.info/nuget/aqovia.pactproducerverifier-aspnetcore)](https://www.nuget.org/packages/aqovia.pactproducerverifier-aspnetcore)/)
 
 ## Assumptions
 

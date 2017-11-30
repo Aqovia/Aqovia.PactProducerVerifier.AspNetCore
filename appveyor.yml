@@ -24,6 +24,12 @@ assembly_info:
 before_build:
 - ps: nuget restore Aqovia.PactProducerVerifier.sln
 
+test:
+  # all except assemblies to test
+  assemblies:
+    except:      
+      - '**\*.Sample.Test.*'
+
 build:
   publish_nuget: true
   publish_nuget_symbols: true
