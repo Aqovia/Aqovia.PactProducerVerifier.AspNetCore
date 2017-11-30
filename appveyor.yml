@@ -7,7 +7,7 @@
 #			   Patch - Increment for build (automatically by Appveyor)
 version: 1.0.{build}
 configuration: Release
-platform: x86
+platform: Any CPU
 image: Visual Studio 2017
 
 pull_requests:
