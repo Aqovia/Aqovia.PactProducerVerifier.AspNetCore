@@ -25,6 +25,8 @@ assembly_info:
 before_build:
 - ps: nuget restore Aqovia.PactProducerVerifier.sln
 
+after_build:  
+  - ps: nuget pack .\Aqovia.PactProducerVerifier\Aqovia.PactProducerVerifier.AspNetCore.nuspec -Version $env:APPVEYOR_BUILD_VERSION
 
 test: off
 
