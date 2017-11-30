@@ -27,6 +27,8 @@ before_build:
 test:
   # all except assemblies to test
   assemblies:
+    only:
+      - hackToStopAppveyorToRunThisTest.dll
     except:      
       - '**\Aqovia.PactProducerVerifier.Sample.Test.exe'
 
