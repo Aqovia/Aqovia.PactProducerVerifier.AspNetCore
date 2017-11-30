@@ -40,3 +40,4 @@ deploy:
     secure: 8nOJ8wjmitnOcDwlirh5QLHECezb9AQgSzbXbBsNkOBGhtOxz1WDQKBDOZXIhoM9
   on:
     branch: master
+  artifact: /.*\.nupkg/
