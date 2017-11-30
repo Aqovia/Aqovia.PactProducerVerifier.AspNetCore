@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Reflection;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -34,9 +36,17 @@ namespace Aqovia.PactProducerVerifier.AspNetCore
 
         public void Configure(IApplicationBuilder app)
         {
-            var env = app.ApplicationServices.GetService<IHostingEnvironment>();
             var baseMethod = _starType.GetMethod(nameof(Configure));
-            baseMethod.Invoke(_apiStartup, new object[] { app, env });
+            var methodParams = new List<Object>();
+            methodParams.Add(app);
+
+            foreach (ParameterInfo p in baseMethod.GetParameters())
+            {
+                if(p.ParameterType!= typeof(IApplicationBuilder))
+                    methodParams.Add(app.ApplicationServices.GetService(p.ParameterType));                
+            }            
+            
+            baseMethod.Invoke(_apiStartup, methodParams.ToArray());
             _onWebAppStarting?.Invoke(app);
         }
     }
