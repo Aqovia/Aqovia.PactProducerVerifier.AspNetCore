@@ -28,7 +28,7 @@ test:
   # all except assemblies to test
   assemblies:
     except:      
-      - '**\*.Sample.Test.*'
+      - '**\Aqovia.PactProducerVerifier.Sample.Test.exe'
 
 build:
   publish_nuget: true
