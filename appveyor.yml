@@ -28,6 +28,8 @@ before_build:
 after_build:  
   - ps: nuget pack .\Aqovia.PactProducerVerifier\Aqovia.PactProducerVerifier.AspNetCore.nuspec -Version $env:APPVEYOR_BUILD_VERSION
 
+test: off
+
 build:
   publish_nuget: true
   publish_nuget_symbols: true
