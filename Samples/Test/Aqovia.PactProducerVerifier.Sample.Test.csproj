@@ -20,7 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Aqovia.PactProducerVerifier\Aqovia.PactProducerVerifier.AspNetCore.csproj" />
-    <ProjectReference Include="..\Aqovia.PactProducerVerifier.Api\Aqovia.PactProducerVerifier.Api.csproj" />
+    <ProjectReference Include="..\Api\Aqovia.PactProducerVerifier.Api.csproj" />
   </ItemGroup>
 
 </Project>
