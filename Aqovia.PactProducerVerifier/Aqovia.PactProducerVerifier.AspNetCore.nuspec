@@ -11,15 +11,15 @@
     <releaseNotes>First release</releaseNotes>
     <copyright>Copyright 2017</copyright>
     <tags>Testing Pact</tags>
+    <dependencies>
+      <dependency id="GitInfo" version="2.0.6" />
+      <dependency id="Microsoft.AspNetCore" version="2.0.1" />
+      <dependency id="Microsoft.AspNetCore.Server.Kestrel" version="2.0.1" />
+      <dependency id="Newtonsoft.Json" version="10.0.3" />
+      <dependency id="PactNet.Windows" version="2.1.2" />
+    </dependencies>
   </metadata>
   <files>
     <file src="bin\Release\net462\Aqovia.PactProducerVerifier.AspNetCore.dll" target="lib\net462\Aqovia.PactProducerVerifier.AspNetCore.dll" />
-  </files>
-  <dependencies>    
-    <dependency id="GitInfo" version="2.0.6" />
-    <dependency id="Microsoft.AspNetCore" version="2.0.1" />    
-    <dependency id="Microsoft.AspNetCore.Server.Kestrel" version="2.0.1" />
-    <dependency id="Newtonsoft.Json" version="10.0.3" />
-    <dependency id="PactNet.Windows" version="2.1.2" />
-  </dependencies>
+  </files>  
 </package>
