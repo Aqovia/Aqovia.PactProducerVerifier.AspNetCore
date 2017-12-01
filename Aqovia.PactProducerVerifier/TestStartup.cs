@@ -30,8 +30,9 @@ namespace Aqovia.PactProducerVerifier.AspNetCore
         public IServiceProvider ConfigureServices(IServiceCollection services)
         {
             var baseMethod = _starType.GetMethod(nameof(ConfigureServices));
-            baseMethod.Invoke(_apiStartup,new object[]{ services } );
-            return services.BuildServiceProvider();
+            services.BuildServiceProvider();
+            var returnValue = baseMethod.Invoke(_apiStartup, new object[] { services }) as IServiceProvider;
+            return returnValue ?? services.BuildServiceProvider();
         }
 
         public void Configure(IApplicationBuilder app)

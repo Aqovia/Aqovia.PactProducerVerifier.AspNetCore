@@ -21,7 +21,7 @@ namespace Aqovia.PactProducerVerifier.Sample.Test
                 StartupAssemblyLocation = Path.Combine(System.Reflection.Assembly.GetExecutingAssembly().Location, "..\\..\\..\\..\\..\\Aqovia.PactProducerVerifier.Api")
 
             };
-            _pactProducerTests = new PactProducerTests(configuration,  Console.WriteLine, ThisAssembly.Git.Branch, builder =>
+            _pactProducerTests = new PactProducerTests(configuration,  Console.WriteLine, "test-branch", builder =>
             {
                 builder.UseMiddleware(typeof(TestStateProvider));
 
@@ -30,7 +30,7 @@ namespace Aqovia.PactProducerVerifier.Sample.Test
         
         public async Task EnsureApiHonoursPactWithConsumers()
         {
-            using (var server = new TestPactBrokerServer(13800))
+            using (var server = new TestPactBrokerServer(13800, "test-branch"))
             {
                 server.Start();
                 await _pactProducerTests.EnsureApiHonoursPactWithConsumersAsync();

@@ -11,11 +11,13 @@ namespace Aqovia.PactProducerVerifier.Sample.Test
     internal class TestPactBrokerServer : IDisposable
     {
         private readonly int _port;
+        private readonly string _branchName;
         private HttpServer _httpServer;
 
-        public TestPactBrokerServer(int port)
+        public TestPactBrokerServer(int port, string branchName)
         {
             _port = port;
+            _branchName = branchName;
         }
 
         public void Start()
@@ -27,9 +29,9 @@ namespace Aqovia.PactProducerVerifier.Sample.Test
                 {
                     if (context.Request.Uri.OriginalString == "/pacts/provider/PactProducerSampleTests/latest")
                     {
-                        context.Response = new HttpResponse(HttpResponseCode.Ok, @"{'_links':{'pacts':[{'href':'http://localhost:" + _port + @"/pacts/provider/PactProducerSampleTests/consumer/testPact/latest/OwinToAspNetCore','name':'testPact'}]}}", false);
+                        context.Response = new HttpResponse(HttpResponseCode.Ok, @"{'_links':{'pacts':[{'href':'http://localhost:" + _port + @"/pacts/provider/PactProducerSampleTests/consumer/testPact/latest/" + _branchName + @"','name':'testPact'}]}}", false);
                     }
-                    else if (context.Request.Uri.OriginalString == "/pacts/provider/PactProducerSampleTests/consumer/testPact/latest/OwinToAspNetCore")
+                    else if (context.Request.Uri.OriginalString == "/pacts/provider/PactProducerSampleTests/consumer/testPact/latest/" + _branchName)
                     {
                         context.Response = new HttpResponse(HttpResponseCode.Ok, @"{
                           ""consumer"": {

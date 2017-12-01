@@ -19,9 +19,9 @@ namespace Aqovia.PactProducerVerifier.Sample.Test
                 TeamCityProjectName = "PactProducerSampleTests",
                 PactBrokerUri = "http://localhost:13800",
                 AspNetCoreStartup = typeof(Startup),                
-                StartupAssemblyLocation = Path.Combine(Directory.GetCurrentDirectory(), "..\\..\\..\\..\\..\\Api")
+                StartupAssemblyLocation = Path.Combine(Directory.GetCurrentDirectory(), "..\\..\\..\\..\\..\\Api"),                
             };
-            _pactProducerTests = new PactProducerTests(configuration, output.WriteLine, ThisAssembly.Git.Branch, builder =>
+            _pactProducerTests = new PactProducerTests(configuration, output.WriteLine, "test-branch", builder =>
             {
                 builder.UseMiddleware(typeof(TestStateProvider));
 
@@ -31,7 +31,7 @@ namespace Aqovia.PactProducerVerifier.Sample.Test
         [Fact]                
         public async Task EnsureApiHonoursPactWithConsumers()
         {
-            using (var server = new TestPactBrokerServer(13800))
+            using (var server = new TestPactBrokerServer(13800, "test-branch"))
             {
                 server.Start();
                 await _pactProducerTests.EnsureApiHonoursPactWithConsumersAsync();
