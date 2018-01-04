@@ -79,7 +79,7 @@ namespace Aqovia.PactProducerVerifier.AspNetCore
 
             var customStartup = new TestStartup(_configuration.AspNetCoreStartup, _configuration.StartupAssemblyLocation, _onWebAppStarting);
 
-            using (var host = WebHost.CreateDefaultBuilder()
+            using (var host = _configuration.GetBaseWebHostBuilder()
                 .ConfigureServices(services =>
                 {
                     services.AddSingleton<IStartup>(customStartup);                    
