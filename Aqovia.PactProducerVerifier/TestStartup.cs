@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Reflection;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -14,13 +15,13 @@ namespace Aqovia.PactProducerVerifier.AspNetCore
         private readonly Action<IApplicationBuilder> _onWebAppStarting;
         private readonly object _apiStartup;
 
-        public TestStartup(Type starType, string startupAssemblyLocation, Action<IApplicationBuilder> onWebAppStarting = null)
+        public TestStartup(Type starType, Action<IApplicationBuilder> onWebAppStarting = null)
         {
             _starType = starType;
             _onWebAppStarting = onWebAppStarting;
 
             var builder = new ConfigurationBuilder()
-                .SetBasePath(startupAssemblyLocation)
+                .SetBasePath(Path.Combine(Directory.GetCurrentDirectory()))
                 .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
                 .AddEnvironmentVariables();            
             
