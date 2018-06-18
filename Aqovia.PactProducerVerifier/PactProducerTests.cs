@@ -77,7 +77,7 @@ namespace Aqovia.PactProducerVerifier.AspNetCore
         private async Task EnsureApiHonoursPactWithConsumersAsync(Uri uri)
         {
 
-            var customStartup = new TestStartup(_configuration.AspNetCoreStartup, _configuration.StartupAssemblyLocation, _onWebAppStarting);
+            var customStartup = new TestStartup(_configuration.AspNetCoreStartup, _onWebAppStarting);
 
             using (var host = _configuration.GetBaseWebHostBuilder()
                 .ConfigureServices(services =>

@@ -17,9 +17,7 @@ namespace Aqovia.PactProducerVerifier.Sample.Test
             {
                 TeamCityProjectName = "PactProducerSampleTests",
                 PactBrokerUri = "http://localhost:13800",
-                AspNetCoreStartup = typeof(Startup),
-                StartupAssemblyLocation = Path.Combine(System.Reflection.Assembly.GetExecutingAssembly().Location, "..\\..\\..\\..\\..\\Aqovia.PactProducerVerifier.Api")
-
+                AspNetCoreStartup = typeof(Startup)
             };
             _pactProducerTests = new PactProducerTests(configuration,  Console.WriteLine, "test-branch", builder =>
             {
