@@ -22,7 +22,7 @@ namespace Aqovia.PactProducerVerifier.AspNetCore
 
             var builder = new ConfigurationBuilder()
                 .SetBasePath(Path.Combine(Directory.GetCurrentDirectory()))
-                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
                 .AddEnvironmentVariables();            
             
             _apiStartup = Activator.CreateInstance(starType, builder.Build());
@@ -39,8 +39,10 @@ namespace Aqovia.PactProducerVerifier.AspNetCore
         public void Configure(IApplicationBuilder app)
         {
             var baseMethod = _starType.GetMethod(nameof(Configure));
-            var methodParams = new List<Object>();
-            methodParams.Add(app);
+            var methodParams = new List<object>
+            {
+                app
+            };
 
             foreach (ParameterInfo p in baseMethod.GetParameters())
             {

@@ -48,7 +48,7 @@ namespace Aqovia.PactProducerVerifier
                 }
             }
 
-            return this._next(context);
+            return _next(context);
         }
    
     }

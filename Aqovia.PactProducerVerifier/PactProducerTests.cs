@@ -4,9 +4,9 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,7 +19,7 @@ namespace Aqovia.PactProducerVerifier.AspNetCore
     public class PactProducerTests : IDisposable
     {
         private const string MasterBranchName = "master";        
-        private const string BaseServiceUri = "http://localhost";                
+        private readonly string BaseServiceUri = $"http://{IPAddress.Loopback.ToString()}";                
         private readonly ActionOutput _output;
         private readonly ProducerVerifierConfiguration _configuration;
         private readonly string _gitBranchName;
@@ -45,7 +45,6 @@ namespace Aqovia.PactProducerVerifier.AspNetCore
             {
                 throw new ArgumentException($"App setting '{nameof(configuration.PactBrokerUri)}' is missing or not set");
             }
-            
 
             CurrentHttpClient = new HttpClient();
         }
@@ -61,7 +60,7 @@ namespace Aqovia.PactProducerVerifier.AspNetCore
             {
                 try
                 {
-                    uriBuilder.Port = random.Next(10000, 20000);
+                    uriBuilder.Port = FreeTcpPort();
                     await EnsureApiHonoursPactWithConsumersAsync(uriBuilder.Uri);
                     break;
                 }
@@ -184,9 +183,17 @@ namespace Aqovia.PactProducerVerifier.AspNetCore
                 .ProviderState(new Uri(serviceUri, "/provider-states").AbsoluteUri)
                 .ServiceProvider(_configuration.TeamCityProjectName, serviceUri.AbsoluteUri)
                 .HonoursPactWith(consumer.ToString())
-                
                 .PactUri(pactUri.AbsoluteUri, pactUriOptions)
                 .Verify();
+        }
+
+        static int FreeTcpPort()
+        {
+            TcpListener l = new TcpListener(IPAddress.Loopback, 0);
+            l.Start();
+            int port = ((IPEndPoint)l.LocalEndpoint).Port;
+            l.Stop();
+            return port;
         }
         private class ActionOutput : IOutput
         {
@@ -208,6 +215,4 @@ namespace Aqovia.PactProducerVerifier.AspNetCore
             CurrentHttpClient?.Dispose();
         }
     }
-
-
 }
