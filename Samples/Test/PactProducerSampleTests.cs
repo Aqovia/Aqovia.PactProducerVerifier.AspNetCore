@@ -17,7 +17,7 @@ namespace Aqovia.PactProducerVerifier.Sample.Test
         {
             var configuration= new ProducerVerifierConfiguration
             {
-                TeamCityProjectName = "PactProducerSampleTests",
+                ProviderName = "PactProducerSampleTests",
                 PactBrokerUri = $"http://{IPAddress.Loopback.ToString()}:{_port}",
                 AspNetCoreStartup = typeof(Startup)
             };

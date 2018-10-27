@@ -22,7 +22,7 @@ namespace Aqovia.PactProducerVerifier.AspNetCore
         private readonly string BaseServiceUri = $"http://{IPAddress.Loopback.ToString()}";
         private readonly ActionOutput _output;
         private readonly ProducerVerifierConfiguration _configuration;
-        private readonly string _gitBranchName;
+        private readonly string _branchName;
         private readonly Action<IApplicationBuilder> _onWebAppStarting;
         private readonly int _maxBranchNameLength;
 
@@ -32,13 +32,13 @@ namespace Aqovia.PactProducerVerifier.AspNetCore
         {
             _output = new ActionOutput(output);
             _configuration = configuration;
-            _gitBranchName = gitBranchName;
+            _branchName = gitBranchName;
             _onWebAppStarting = onWebAppStarting;
             _maxBranchNameLength = maxBranchNameLength;
 
-            if (string.IsNullOrEmpty(configuration.TeamCityProjectName))
+            if (string.IsNullOrEmpty(configuration.ProviderName))
             {
-                throw new ArgumentException($"App setting '{nameof(configuration.TeamCityProjectName)}' is missing or not set");
+                throw new ArgumentException($"App setting '{nameof(configuration.ProviderName)}' is missing or not set");
             }
 
             if (string.IsNullOrEmpty(configuration.PactBrokerUri))
@@ -122,9 +122,9 @@ namespace Aqovia.PactProducerVerifier.AspNetCore
                 : _configuration.AspNetCoreStartup.BaseType.Assembly.FullName;
         }
 
-        private string GetPactUrl(JToken consumer, string branchName)
+        private string GetPactUrl(JToken consumerName, string branchName)
         {
-            return $"pacts/provider/{_configuration.TeamCityProjectName}/consumer/{consumer}/latest/{branchName}";
+            return $"pacts/provider/{_configuration.ProviderName}/consumer/{consumerName}/latest/{branchName}";
         }
 
         private async Task<IEnumerable<JToken>> GetConsumersAsync(HttpClient client)
@@ -132,7 +132,7 @@ namespace Aqovia.PactProducerVerifier.AspNetCore
             IEnumerable<JToken> consumers = new List<JToken>();
             var request = new HttpRequestMessage()
             {
-                RequestUri = new Uri($"{_configuration.PactBrokerUri}/pacts/provider/{_configuration.TeamCityProjectName}/latest"),
+                RequestUri = new Uri($"{_configuration.PactBrokerUri}/pacts/provider/{_configuration.ProviderName}/latest"),
                 Method = HttpMethod.Get,
             };
 
@@ -157,10 +157,10 @@ namespace Aqovia.PactProducerVerifier.AspNetCore
         {
             var componentBranch = Environment.GetEnvironmentVariable("ComponentBranch");
 
-            _output.WriteLine($"GitBranchName = {_gitBranchName}");
+            _output.WriteLine($"GitBranchName = {_branchName}");
             _output.WriteLine($"Environment Variable 'ComponentBranch' = {componentBranch}");
 
-            var branchName = _gitBranchName;
+            var branchName = _branchName;
             branchName = string.IsNullOrEmpty(componentBranch) ? branchName : componentBranch;
             branchName = string.IsNullOrEmpty(branchName) ? MasterBranchName : branchName;
 
@@ -194,7 +194,7 @@ namespace Aqovia.PactProducerVerifier.AspNetCore
 
             pactVerifier
                 .ProviderState(new Uri(serviceUri, "/provider-states").AbsoluteUri)
-                .ServiceProvider(_configuration.TeamCityProjectName, serviceUri.AbsoluteUri)
+                .ServiceProvider(_configuration.ProviderName, serviceUri.AbsoluteUri)
                 .HonoursPactWith(consumer.ToString())
                 .PactUri(pactUri.AbsoluteUri, pactUriOptions)
                 .Verify();
