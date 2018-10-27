@@ -18,14 +18,14 @@ namespace Aqovia.PactProducerVerifier.AspNetCore
 {
     public class PactProducerTests : IDisposable
     {
-        private const string MasterBranchName = "master";        
-        private readonly string BaseServiceUri = $"http://{IPAddress.Loopback.ToString()}";                
+        private const string MasterBranchName = "master";
+        private readonly string BaseServiceUri = $"http://{IPAddress.Loopback.ToString()}";
         private readonly ActionOutput _output;
         private readonly ProducerVerifierConfiguration _configuration;
         private readonly string _gitBranchName;
         private readonly Action<IApplicationBuilder> _onWebAppStarting;
         private readonly int _maxBranchNameLength;
-        
+
         public HttpClient CurrentHttpClient;
 
         public PactProducerTests(ProducerVerifierConfiguration configuration, Action<string> output, string gitBranchName, Action<IApplicationBuilder> onWebAppStarting = null, int maxBranchNameLength = int.MaxValue)
@@ -67,27 +67,30 @@ namespace Aqovia.PactProducerVerifier.AspNetCore
                 catch (HttpListenerException ex)
                 {
                     _output.WriteLine($"Service Uri: {uriBuilder.Uri.AbsoluteUri} failed with: {ex.Message}");
-                    if(i < maxRetries)
+                    if (i < maxRetries)
                         _output.WriteLine("will retry ...");
                 }
-            }                        
+            }
+        }
+
+        public void Dispose()
+        {
+            CurrentHttpClient?.Dispose();
         }
 
         private async Task EnsureApiHonoursPactWithConsumersAsync(Uri uri)
         {
-
             var customStartup = new TestStartup(_configuration.AspNetCoreStartup, _onWebAppStarting);
 
             using (var host = _configuration.GetBaseWebHostBuilder()
                 .ConfigureServices(services =>
                 {
-                    services.AddSingleton<IStartup>(customStartup);                    
+                    services.AddSingleton<IStartup>(customStartup);
                 })
                 .UseUrls(uri.AbsoluteUri)
-                .UseSetting(WebHostDefaults.ApplicationKey, _configuration.AspNetCoreStartup.Assembly.FullName)
+                .UseSetting(WebHostDefaults.ApplicationKey, GetStartupClassAssemblyContainingEntryPoint())
                 .Build())
             {
-                
                 await host.StartAsync();
 
                 var consumers = await GetConsumersAsync(CurrentHttpClient);
@@ -110,20 +113,29 @@ namespace Aqovia.PactProducerVerifier.AspNetCore
             }
         }
 
+        private string GetStartupClassAssemblyContainingEntryPoint()
+        {
+            // The startup class might have being overridden by a test startup class. 
+            // In that case we have to get the assembly name of the base startup class
+            return _configuration.AspNetCoreStartup.BaseType == typeof(object)
+                ? _configuration.AspNetCoreStartup.Assembly.FullName
+                : _configuration.AspNetCoreStartup.BaseType.Assembly.FullName;
+        }
+
         private string GetPactUrl(JToken consumer, string branchName)
         {
             return $"pacts/provider/{_configuration.TeamCityProjectName}/consumer/{consumer}/latest/{branchName}";
         }
 
         private async Task<IEnumerable<JToken>> GetConsumersAsync(HttpClient client)
-        {            
+        {
             IEnumerable<JToken> consumers = new List<JToken>();
             var request = new HttpRequestMessage()
             {
                 RequestUri = new Uri($"{_configuration.PactBrokerUri}/pacts/provider/{_configuration.TeamCityProjectName}/latest"),
-                Method = HttpMethod.Get,               
+                Method = HttpMethod.Get,
             };
-            
+
             var response = await client.SendAsync(request);
             if (response.StatusCode == HttpStatusCode.OK)
             {
@@ -136,22 +148,23 @@ namespace Aqovia.PactProducerVerifier.AspNetCore
 
         private void SetupRestClient()
         {
-            CurrentHttpClient.BaseAddress = new Uri(_configuration.PactBrokerUri);            
+            CurrentHttpClient.BaseAddress = new Uri(_configuration.PactBrokerUri);
             var byteArray = Encoding.ASCII.GetBytes($"{_configuration.PactBrokerUsername}:{_configuration.PactBrokerPassword}");
-            CurrentHttpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(byteArray));            
+            CurrentHttpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(byteArray));
         }
+
         private string GetCurrentBranchName()
         {
             var componentBranch = Environment.GetEnvironmentVariable("ComponentBranch");
 
             _output.WriteLine($"GitBranchName = {_gitBranchName}");
             _output.WriteLine($"Environment Variable 'ComponentBranch' = {componentBranch}");
-            
+
             var branchName = _gitBranchName;
             branchName = string.IsNullOrEmpty(componentBranch) ? branchName : componentBranch;
             branchName = string.IsNullOrEmpty(branchName) ? MasterBranchName : branchName;
 
-            branchName = branchName?.TrimStart('-').Length > _maxBranchNameLength ? 
+            branchName = branchName?.TrimStart('-').Length > _maxBranchNameLength ?
                  branchName.TrimStart('-').Substring(0, _maxBranchNameLength)
                 : branchName.TrimStart('-');
 
@@ -166,7 +179,7 @@ namespace Aqovia.PactProducerVerifier.AspNetCore
 
             var config = new PactVerifierConfig
             {
-                Outputters = new List<IOutput> 
+                Outputters = new List<IOutput>
                 {
                     _output
                 }
@@ -187,7 +200,7 @@ namespace Aqovia.PactProducerVerifier.AspNetCore
                 .Verify();
         }
 
-        static int FreeTcpPort()
+        private static int FreeTcpPort()
         {
             TcpListener l = new TcpListener(IPAddress.Loopback, 0);
             l.Start();
@@ -195,6 +208,7 @@ namespace Aqovia.PactProducerVerifier.AspNetCore
             l.Stop();
             return port;
         }
+
         private class ActionOutput : IOutput
         {
             private readonly Action<string> _output;
@@ -208,11 +222,6 @@ namespace Aqovia.PactProducerVerifier.AspNetCore
             {
                 _output.Invoke(line);
             }
-        }
-
-        public void Dispose()
-        {
-            CurrentHttpClient?.Dispose();
         }
     }
 }
