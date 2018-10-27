@@ -20,6 +20,6 @@
     </dependencies>
   </metadata>
   <files>
-    <file src="bin\Release\net462\Aqovia.PactProducerVerifier.AspNetCore.dll" target="lib\net462\Aqovia.PactProducerVerifier.AspNetCore.dll" />
+    <file src="bin\Release\netcoreapp2.1\Aqovia.PactProducerVerifier.AspNetCore.dll" target="lib\netcoreapp2.1\Aqovia.PactProducerVerifier.AspNetCore.dll" />
   </files>  
 </package>
