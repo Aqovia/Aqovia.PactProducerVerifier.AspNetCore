@@ -5,7 +5,7 @@ namespace Aqovia.PactProducerVerifier.AspNetCore
 {
     public class ProducerVerifierConfiguration
     {
-        public string TeamCityProjectName { get; set; }        
+        public string ProviderName { get; set; }        
         public string PactBrokerUsername { get; set; }
         public string PactBrokerPassword { get; set; }
         public string PactBrokerUri { get; set; }

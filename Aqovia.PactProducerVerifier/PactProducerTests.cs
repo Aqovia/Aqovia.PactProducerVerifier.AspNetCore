@@ -4,9 +4,9 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,34 +18,33 @@ namespace Aqovia.PactProducerVerifier.AspNetCore
 {
     public class PactProducerTests : IDisposable
     {
-        private const string MasterBranchName = "master";        
-        private const string BaseServiceUri = "http://localhost";                
+        private const string MasterBranchName = "master";
+        private readonly string BaseServiceUri = $"http://{IPAddress.Loopback.ToString()}";
         private readonly ActionOutput _output;
         private readonly ProducerVerifierConfiguration _configuration;
-        private readonly string _gitBranchName;
+        private readonly string _branchName;
         private readonly Action<IApplicationBuilder> _onWebAppStarting;
         private readonly int _maxBranchNameLength;
-        
+
         public HttpClient CurrentHttpClient;
 
         public PactProducerTests(ProducerVerifierConfiguration configuration, Action<string> output, string gitBranchName, Action<IApplicationBuilder> onWebAppStarting = null, int maxBranchNameLength = int.MaxValue)
         {
             _output = new ActionOutput(output);
             _configuration = configuration;
-            _gitBranchName = gitBranchName;
+            _branchName = gitBranchName;
             _onWebAppStarting = onWebAppStarting;
             _maxBranchNameLength = maxBranchNameLength;
 
-            if (string.IsNullOrEmpty(configuration.TeamCityProjectName))
+            if (string.IsNullOrEmpty(configuration.ProviderName))
             {
-                throw new ArgumentException($"App setting '{nameof(configuration.TeamCityProjectName)}' is missing or not set");
+                throw new ArgumentException($"App setting '{nameof(configuration.ProviderName)}' is missing or not set");
             }
 
             if (string.IsNullOrEmpty(configuration.PactBrokerUri))
             {
                 throw new ArgumentException($"App setting '{nameof(configuration.PactBrokerUri)}' is missing or not set");
             }
-            
 
             CurrentHttpClient = new HttpClient();
         }
@@ -61,34 +60,37 @@ namespace Aqovia.PactProducerVerifier.AspNetCore
             {
                 try
                 {
-                    uriBuilder.Port = random.Next(10000, 20000);
+                    uriBuilder.Port = FreeTcpPort();
                     await EnsureApiHonoursPactWithConsumersAsync(uriBuilder.Uri);
                     break;
                 }
                 catch (HttpListenerException ex)
                 {
                     _output.WriteLine($"Service Uri: {uriBuilder.Uri.AbsoluteUri} failed with: {ex.Message}");
-                    if(i < maxRetries)
+                    if (i < maxRetries)
                         _output.WriteLine("will retry ...");
                 }
-            }                        
+            }
+        }
+
+        public void Dispose()
+        {
+            CurrentHttpClient?.Dispose();
         }
 
         private async Task EnsureApiHonoursPactWithConsumersAsync(Uri uri)
         {
-
             var customStartup = new TestStartup(_configuration.AspNetCoreStartup, _onWebAppStarting);
 
             using (var host = _configuration.GetBaseWebHostBuilder()
                 .ConfigureServices(services =>
                 {
-                    services.AddSingleton<IStartup>(customStartup);                    
+                    services.AddSingleton<IStartup>(customStartup);
                 })
                 .UseUrls(uri.AbsoluteUri)
-                .UseSetting(WebHostDefaults.ApplicationKey, _configuration.AspNetCoreStartup.Assembly.FullName)
+                .UseSetting(WebHostDefaults.ApplicationKey, GetStartupClassAssemblyContainingEntryPoint())
                 .Build())
             {
-                
                 await host.StartAsync();
 
                 var consumers = await GetConsumersAsync(CurrentHttpClient);
@@ -111,20 +113,29 @@ namespace Aqovia.PactProducerVerifier.AspNetCore
             }
         }
 
-        private string GetPactUrl(JToken consumer, string branchName)
+        private string GetStartupClassAssemblyContainingEntryPoint()
         {
-            return $"pacts/provider/{_configuration.TeamCityProjectName}/consumer/{consumer}/latest/{branchName}";
+            // The startup class might have being overridden by a test startup class. 
+            // In that case we have to get the assembly name of the base startup class
+            return _configuration.AspNetCoreStartup.BaseType == typeof(object)
+                ? _configuration.AspNetCoreStartup.Assembly.FullName
+                : _configuration.AspNetCoreStartup.BaseType.Assembly.FullName;
+        }
+
+        private string GetPactUrl(JToken consumerName, string branchName)
+        {
+            return $"pacts/provider/{_configuration.ProviderName}/consumer/{consumerName}/latest/{branchName}";
         }
 
         private async Task<IEnumerable<JToken>> GetConsumersAsync(HttpClient client)
-        {            
+        {
             IEnumerable<JToken> consumers = new List<JToken>();
             var request = new HttpRequestMessage()
             {
-                RequestUri = new Uri($"{_configuration.PactBrokerUri}/pacts/provider/{_configuration.TeamCityProjectName}/latest"),
-                Method = HttpMethod.Get,               
+                RequestUri = new Uri($"{_configuration.PactBrokerUri}/pacts/provider/{_configuration.ProviderName}/latest"),
+                Method = HttpMethod.Get,
             };
-            
+
             var response = await client.SendAsync(request);
             if (response.StatusCode == HttpStatusCode.OK)
             {
@@ -137,22 +148,23 @@ namespace Aqovia.PactProducerVerifier.AspNetCore
 
         private void SetupRestClient()
         {
-            CurrentHttpClient.BaseAddress = new Uri(_configuration.PactBrokerUri);            
+            CurrentHttpClient.BaseAddress = new Uri(_configuration.PactBrokerUri);
             var byteArray = Encoding.ASCII.GetBytes($"{_configuration.PactBrokerUsername}:{_configuration.PactBrokerPassword}");
-            CurrentHttpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(byteArray));            
+            CurrentHttpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(byteArray));
         }
+
         private string GetCurrentBranchName()
         {
             var componentBranch = Environment.GetEnvironmentVariable("ComponentBranch");
 
-            _output.WriteLine($"GitBranchName = {_gitBranchName}");
+            _output.WriteLine($"GitBranchName = {_branchName}");
             _output.WriteLine($"Environment Variable 'ComponentBranch' = {componentBranch}");
-            
-            var branchName = _gitBranchName;
+
+            var branchName = _branchName;
             branchName = string.IsNullOrEmpty(componentBranch) ? branchName : componentBranch;
             branchName = string.IsNullOrEmpty(branchName) ? MasterBranchName : branchName;
 
-            branchName = branchName?.TrimStart('-').Length > _maxBranchNameLength ? 
+            branchName = branchName?.TrimStart('-').Length > _maxBranchNameLength ?
                  branchName.TrimStart('-').Substring(0, _maxBranchNameLength)
                 : branchName.TrimStart('-');
 
@@ -167,7 +179,7 @@ namespace Aqovia.PactProducerVerifier.AspNetCore
 
             var config = new PactVerifierConfig
             {
-                Outputters = new List<IOutput> 
+                Outputters = new List<IOutput>
                 {
                     _output
                 }
@@ -182,12 +194,21 @@ namespace Aqovia.PactProducerVerifier.AspNetCore
 
             pactVerifier
                 .ProviderState(new Uri(serviceUri, "/provider-states").AbsoluteUri)
-                .ServiceProvider(_configuration.TeamCityProjectName, serviceUri.AbsoluteUri)
+                .ServiceProvider(_configuration.ProviderName, serviceUri.AbsoluteUri)
                 .HonoursPactWith(consumer.ToString())
-                
                 .PactUri(pactUri.AbsoluteUri, pactUriOptions)
                 .Verify();
         }
+
+        private static int FreeTcpPort()
+        {
+            TcpListener l = new TcpListener(IPAddress.Loopback, 0);
+            l.Start();
+            int port = ((IPEndPoint)l.LocalEndpoint).Port;
+            l.Stop();
+            return port;
+        }
+
         private class ActionOutput : IOutput
         {
             private readonly Action<string> _output;
@@ -202,12 +223,5 @@ namespace Aqovia.PactProducerVerifier.AspNetCore
                 _output.Invoke(line);
             }
         }
-
-        public void Dispose()
-        {
-            CurrentHttpClient?.Dispose();
-        }
     }
-
-
 }

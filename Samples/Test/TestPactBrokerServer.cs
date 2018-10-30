@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Net;
-using System.Net.Sockets;
 using System.Threading.Tasks;
-using uhttpsharp;
-using uhttpsharp.Listeners;
-using uhttpsharp.RequestProviders;
+using Microsoft.AspNetCore;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 
 namespace Aqovia.PactProducerVerifier.Sample.Test
 {
@@ -12,7 +12,7 @@ namespace Aqovia.PactProducerVerifier.Sample.Test
     {
         private readonly int _port;
         private readonly string _branchName;
-        private HttpServer _httpServer;
+        private Task _server;
 
         public TestPactBrokerServer(int port, string branchName)
         {
@@ -22,63 +22,69 @@ namespace Aqovia.PactProducerVerifier.Sample.Test
 
         public void Start()
         {
-            _httpServer = new HttpServer(new HttpRequestProvider());
-            _httpServer.Use(new TcpListenerAdapter(new TcpListener(IPAddress.Loopback, _port)));
-
-            _httpServer.Use(new InlineHandler(context =>
+            string url = $"http://{IPAddress.Loopback.ToString()}:{_port}";
+            _server = WebHost.CreateDefaultBuilder(new string[] { })
+            .UseUrls(url)
+            .Configure(app =>
+            {
+                app.Run(async context =>
                 {
-                    if (context.Request.Uri.OriginalString == "/pacts/provider/PactProducerSampleTests/latest")
+                    if (context.Request.Path.Value == "/pacts/provider/PactProducerSampleTests/latest")
                     {
-                        context.Response = new HttpResponse(HttpResponseCode.Ok, @"{'_links':{'pacts':[{'href':'http://localhost:" + _port + @"/pacts/provider/PactProducerSampleTests/consumer/testPact/latest/" + _branchName + @"','name':'testPact'}]}}", false);
+                        context.Response.StatusCode = (int)HttpStatusCode.OK;
+                        context.Response.ContentType = "application/json";
+                        await context.Response.WriteAsync($@"{{'_links':{{'pacts':[{{'href':'{url}/pacts/provider/PactProducerSampleTests/consumer/testPact/latest/{_branchName}','name':'testPact'}}]}}}}");
                     }
-                    else if (context.Request.Uri.OriginalString == "/pacts/provider/PactProducerSampleTests/consumer/testPact/latest/" + _branchName)
+                    else if (context.Request.Path.Value == "/pacts/provider/PactProducerSampleTests/consumer/testPact/latest/" + _branchName)
                     {
-                        context.Response = new HttpResponse(HttpResponseCode.Ok, @"{
-                          ""consumer"": {
-                            ""name"": ""Event API Consumer""
-                          },
-                          ""provider"": {
-                            ""name"": ""Event API""
-                          },
-                          ""interactions"": [
-                            {
-                              ""description"": ""should return values"",
-                              ""request"": {
-                                ""method"": ""get"",
-                                ""path"": ""/values/get"",
-                                ""headers"": {
-                                  ""Accept"": ""application/json""
-                                }
-                              },
-                              ""response"": {
-                                ""status"": 200,
-                                ""headers"": {
-                                  ""Content-Type"": ""application/json; charset=utf-8""
-                                },
-                                ""body"":  [""value1"",""value2""]                                
-                            }
-                        }      
-                          ],
-                          ""metadata"": {
-                            ""pactSpecification"": {
-                              ""version"": ""2.0.0""
-                            }
-                          }
-                        }", false);
+                        context.Response.StatusCode = (int)HttpStatusCode.OK;
+                        context.Response.ContentType = "application/json";
+                        await context.Response.WriteAsync(@"{
+                                          ""consumer"": {
+                                            ""name"": ""Event API Consumer""
+                                          },
+                                          ""provider"": {
+                                            ""name"": ""Event API""
+                                          },
+                                          ""interactions"": [
+                                            {
+                                              ""description"": ""should return values"",
+                                              ""request"": {
+                                                ""method"": ""get"",
+                                                ""path"": ""/values/get"",
+                                                ""headers"": {
+                                                  ""Accept"": ""application/json""
+                                                }
+                                              },
+                                              ""response"": {
+                                                ""status"": 200,
+                                                ""headers"": {
+                                                  ""Content-Type"": ""application/json; charset=utf-8""
+                                                },
+                                                ""body"":  [""value1"",""value2""]                                
+                                            }
+                                        }      
+                                          ],
+                                          ""metadata"": {
+                                            ""pactSpecification"": {
+                                              ""version"": ""2.0.0""
+                                            }
+                                          }
+                                        }");
                     }
                     else
                     {
-                        context.Response = new HttpResponse(HttpResponseCode.NotFound, "Not found", false);
+                        context.Response.StatusCode = (int)HttpStatusCode.NotFound;
+                        await context.Response.WriteAsync(string.Empty);
                     }
-                    return Task.CompletedTask;
-                }));
-
-            _httpServer.Start();                            
+                });
+            })
+            .Build().StartAsync();
         }
 
         public void Dispose()
         {
-            _httpServer?.Dispose();
+            _server.Dispose();
         }
     }
 }
