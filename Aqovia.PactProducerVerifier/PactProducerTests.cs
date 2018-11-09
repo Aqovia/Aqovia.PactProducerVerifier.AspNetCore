@@ -182,7 +182,9 @@ namespace Aqovia.PactProducerVerifier.AspNetCore
                 Outputters = new List<IOutput>
                 {
                     _output
-                }
+                },
+                ProviderVersion = !string.IsNullOrEmpty(_configuration.ProviderVersion) ? _configuration.ProviderVersion : null,
+                PublishVerificationResults = !string.IsNullOrEmpty(_configuration.ProviderVersion)
             };
 
             PactUriOptions pactUriOptions = null;
