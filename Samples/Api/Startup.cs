@@ -28,13 +28,6 @@ namespace Aqovia.PactProducerVerifier.Api
         public void Configure(IApplicationBuilder app, IHostingEnvironment env)
         {
             app.UseDeveloperExceptionPage();
-
-            app.UseMvc(routes =>
-            {
-                routes.MapRoute(
-                    name: "default",
-                    template: "{controller=Values}/{action=Get}/{id?}");
-            });
         }
     }
 }

@@ -22,7 +22,7 @@ namespace Aqovia.PactProducerVerifier.Sample.Test
 
         public void Start()
         {
-            string url = $"http://{IPAddress.Loopback.ToString()}:{_port}";
+            string url = "https://interxion.pactflow.io";
             _server = WebHost.CreateDefaultBuilder(new string[] { })
             .UseUrls(url)
             .Configure(app =>
