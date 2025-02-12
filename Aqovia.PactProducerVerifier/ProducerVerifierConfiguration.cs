@@ -10,17 +10,13 @@ namespace Aqovia.PactProducerVerifier.AspNetCore
         /// </summary>
         public string ProviderName { get; set; }
         /// <summary>
-        /// If provider version is set the verifiaction results will be publishe to the Pact Broker
+        /// If provider version is set the verification results will be published to the Pact Broker
         /// </summary>
         public string ProviderVersion { get; set; }
         /// <summary>
-        /// Username required to authenticate with the Pact Broker 
+        /// The Bearer token required to authenticate with the Pact Broker 
         /// </summary>
-        public string PactBrokerUsername { get; set; }
-        /// <summary>
-        /// Password required to authenticate with the Pact Broker
-        /// </summary>
-        public string PactBrokerPassword { get; set; }
+        public string PactBrokerToken { get; set; }
         /// <summary>
         /// The Pact Broker uri
         /// </summary>

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -13,6 +14,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json.Linq;
 using PactNet;
 using PactNet.Infrastructure.Outputters;
+using PactNet.Verifier;
 
 namespace Aqovia.PactProducerVerifier.AspNetCore
 {
@@ -39,6 +41,11 @@ namespace Aqovia.PactProducerVerifier.AspNetCore
             if (string.IsNullOrEmpty(configuration.ProviderName))
             {
                 throw new ArgumentException($"App setting '{nameof(configuration.ProviderName)}' is missing or not set");
+            }
+
+            if (string.IsNullOrEmpty(configuration.PactBrokerToken))
+            {
+                throw new ArgumentException($"App setting '{nameof(configuration.PactBrokerToken)}' is missing or not set");
             }
 
             if (string.IsNullOrEmpty(configuration.PactBrokerUri))
@@ -149,8 +156,7 @@ namespace Aqovia.PactProducerVerifier.AspNetCore
         private void SetupRestClient()
         {
             CurrentHttpClient.BaseAddress = new Uri(_configuration.PactBrokerUri);
-            var byteArray = Encoding.ASCII.GetBytes($"{_configuration.PactBrokerUsername}:{_configuration.PactBrokerPassword}");
-            CurrentHttpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(byteArray));
+            CurrentHttpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _configuration.PactBrokerToken);
         }
 
         private string GetCurrentBranchName()
@@ -182,23 +188,20 @@ namespace Aqovia.PactProducerVerifier.AspNetCore
                 Outputters = new List<IOutput>
                 {
                     _output
-                },
-                ProviderVersion = !string.IsNullOrEmpty(_configuration.ProviderVersion) ? _configuration.ProviderVersion : null,
-                PublishVerificationResults = !string.IsNullOrEmpty(_configuration.ProviderVersion)
+                }
             };
 
-            PactUriOptions pactUriOptions = null;
-            if (!string.IsNullOrEmpty(_configuration.PactBrokerUsername))
-                pactUriOptions = new PactUriOptions(_configuration.PactBrokerUsername, _configuration.PactBrokerPassword);
 
             var pactUri = new Uri(new Uri(_configuration.PactBrokerUri), pactUrl);
-            var pactVerifier = new PactVerifier(config);
+            IPactVerifier pactVerifier = new PactVerifier(_configuration.ProviderName, config);
 
             pactVerifier
-                .ProviderState(new Uri(serviceUri, "/provider-states").AbsoluteUri)
-                .ServiceProvider(_configuration.ProviderName, serviceUri.AbsoluteUri)
-                .HonoursPactWith(consumer.ToString())
-                .PactUri(pactUri.AbsoluteUri, pactUriOptions)
+                .WithHttpEndpoint(new Uri(pactUri.AbsoluteUri))
+                .WithPactBrokerSource(pactUri, options =>
+                {
+                    options.TokenAuthentication(_configuration.PactBrokerToken);
+                })
+                .WithProviderStateUrl(new Uri(serviceUri, "/provider-states"))
                 .Verify();
         }
 

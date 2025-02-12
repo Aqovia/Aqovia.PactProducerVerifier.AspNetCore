@@ -18,7 +18,8 @@ namespace Aqovia.PactProducerVerifier.Sample.Test
             var configuration = new ProducerVerifierConfiguration
             {
                 ProviderName = "PactProducerSampleTests",
-                PactBrokerUri = $"http://{IPAddress.Loopback.ToString()}:{_port}",
+                PactBrokerToken = "testbearertoken",
+                PactBrokerUri = "https://interxion.pactflow.io",
                 AspNetCoreStartup = typeof(Startup)
             };
             _pactProducerTests = new PactProducerTests(configuration, output.WriteLine, "test-branch", builder =>
