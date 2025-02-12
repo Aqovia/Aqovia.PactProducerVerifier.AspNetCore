@@ -197,8 +197,10 @@ namespace Aqovia.PactProducerVerifier.AspNetCore
 
             pactVerifier
                 .WithHttpEndpoint(new Uri(pactUri.AbsoluteUri))
-                .WithFileSource(new FileInfo(""))
-                .WithCustomHeader("Authorization", $"Bearer {_configuration.PactBrokerToken}")
+                .WithPactBrokerSource(pactUri, options =>
+                {
+                    options.TokenAuthentication(_configuration.PactBrokerToken);
+                })
                 .WithProviderStateUrl(new Uri(serviceUri, "/provider-states"))
                 .Verify();
         }
