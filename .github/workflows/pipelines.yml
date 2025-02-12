@@ -61,7 +61,7 @@ jobs:
           pr-body: ${{ steps.build-vars.outputs.branch-name }}
       - name: Pack branch preview
         if: github.event_name == 'push' && github.ref != 'refs/heads/master'
-        run: nuget pack "Aqovia.PactProducerVerifier/${{ env.PROJECT_NAME }}.nuspec" -Version "${{ env.latest_version }}-${{ env.branch_name }}-${{ github.GITHUB_RUN_ATTEMPT }}" -OutputDirectory "../../Aqovia.PactProducerVerifier/bin/Release" -Symbols
+        run: nuget pack "Aqovia.PactProducerVerifier/${{ env.PROJECT_NAME }}.nuspec" -Version "${{ env.latest_version }}-${{ env.branch_name }}-${{ github.GITHUB_RUN_ATTEMPT }}" -OutputDirectory "./Aqovia.PactProducerVerifier/bin/Release" -Symbols
         env:
           latest_version: ${{ steps.build-vars.outputs.last-tagged-version }}
           branch_name: ${{ steps.build-vars.outputs.branch-name }}
