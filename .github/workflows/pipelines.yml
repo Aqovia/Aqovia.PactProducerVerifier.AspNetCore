@@ -47,7 +47,7 @@ jobs:
       - name: Build
         run: dotnet build Aqovia.PactProducerVerifier/${{ env.PROJECT_NAME }}.csproj -c Release --no-restore -p:GeneratePackageOnBuild=true -p:IncludeSource=true -p:IncludeSymbols=true -p:NuspecFile=Aqovia.PactProducerVerifier/${{ env.PROJECT_NAME }}.nuspec
       - name: Test
-        run: dotnet test -c Release Samples/Test/${{ env.TEST_PROJECT_NAME }}
+        run: dotnet test -c Release Samples/Test/${{ env.TEST_PROJECT_NAME }}.csproj
       - name: Extract Build Variables
         id: build-vars
         uses: ./.github/actions/set-build-variables
