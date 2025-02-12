@@ -45,7 +45,7 @@ jobs:
       - name: Restore Packages
         run: nuget restore $PROJECT_NAME.sln
       - name: Build
-        run: dotnet build ${{ env.PROJECT_NAME }}/${{ env.PROJECT_NAME }}.csproj -c Release --no-restore -p:GeneratePackageOnBuild=true -p:IncludeSource=true -p:IncludeSymbols=true -p:NuspecFile=${{ env.PROJECT_NAME }}/${{ env.PROJECT_NAME }}.nuspec
+        run: dotnet build Aqovia.PactProducerVerifier/${{ env.PROJECT_NAME }}.csproj -c Release --no-restore -p:GeneratePackageOnBuild=true -p:IncludeSource=true -p:IncludeSymbols=true -p:NuspecFile=Aqovia.PactProducerVerifier/${{ env.PROJECT_NAME }}.nuspec
       - name: Test
         run: dotnet test -c Release Samples/Test/${{ env.TEST_PROJECT_NAME }}
       - name: Extract Build Variables
