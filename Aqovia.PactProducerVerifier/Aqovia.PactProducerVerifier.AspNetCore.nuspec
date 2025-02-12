@@ -9,7 +9,7 @@
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>Pact Producer Test for aspnet core sites</description>
     <releaseNotes>First release</releaseNotes>
-    <copyright>Copyright 2017</copyright>
+    <copyright>Copyright 2025</copyright>
     <tags>Testing Pact</tags>
     <dependencies>
       <dependency id="GitInfo" version="2.0.6" />
@@ -21,5 +21,5 @@
   </metadata>
   <files>
     <file src="bin\Release\netcoreapp2.1\Aqovia.PactProducerVerifier.AspNetCore.dll" target="lib\netcoreapp2.1\Aqovia.PactProducerVerifier.AspNetCore.dll" />
-  </files>  
+  </files>
 </package>
